@@ -1,0 +1,53 @@
+import streamlit as st
+import pandas as pd
+import os
+
+st.set_page_config(page_title="Extended Diagnostic Math Test", layout="wide")
+st.title("📝 Extended Diagnostic Math Test (ม.ปลาย)")
+
+# โหลดข้อสอบจาก Excel (questions.xlsx)
+if os.path.exists("questions.xlsx"):
+    df_questions = pd.read_excel("questions.xlsx")
+else:
+    st.error("ไม่พบไฟล์ questions.xlsx กรุณาวางไฟล์ในโฟลเดอร์เดียวกัน")
+    st.stop()
+
+# ฟอร์มกรอกคำตอบ
+user_answers = {}
+for idx, row in df_questions.iterrows():
+    user_answers[row['Question']] = st.text_input(f"{row['Question']} ({row['Topic']})")
+
+if st.button("ส่งคำตอบ"):
+    score = 0
+    wrong_topics = []
+
+    for idx, row in df_questions.iterrows():
+        ans = str(user_answers[row['Question']]).strip()
+        correct_answers = str(row['Answers']).split(",")
+        if ans in correct_answers:
+            score += 1
+        else:
+            wrong_topics.append(row['Topic'])
+
+    st.subheader(f"คุณได้ {score} / {len(df_questions)} คะแนน")
+
+    if wrong_topics:
+        st.write("บทที่ควรทบทวน:")
+        topic_count = pd.Series(wrong_topics).value_counts()
+        st.bar_chart(topic_count)
+    else:
+        st.success("ทุกบทเข้าใจดี 🎉")
+
+    # บันทึกผลเป็น Excel
+    result_file = "results.xlsx"
+    new_result = pd.DataFrame([{
+        'Score': score,
+        'Wrong_Topics': ", ".join(wrong_topics)
+    }])
+    if os.path.exists(result_file):
+        df_results = pd.read_excel(result_file)
+        df_results = pd.concat([df_results, new_result], ignore_index=True)
+    else:
+        df_results = new_result
+    df_results.to_excel(result_file, index=False)
+    st.write(f"บันทึกผลเรียบร้อยใน {result_file}")
